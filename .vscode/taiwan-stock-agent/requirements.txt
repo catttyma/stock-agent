@@ -1,0 +1,14 @@
+# 表格運算與數值分析
+pandas>=2.2,<3
+numpy>=2.0,<3
+
+# HTTP 請求與 HTML 網頁解析
+requests>=2.32,<3
+beautifulsoup4>=4.12,<5
+
+# SQLite 資料庫 ORM 與資料模型管理
+sqlalchemy>=2.0,<3
+
+# AI 摘要與 FinMind 台股資料服務
+openai>=1.0,<2
+finmind>=1.9,<2
