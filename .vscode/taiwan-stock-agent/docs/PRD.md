@@ -278,8 +278,8 @@ Phase 1
 - 建立 SQLite Schema
 Phase 2
 
-- 完成財報抓取模組
-- 完成新聞抓取模組
+- ✅ 完成 MVP 財報抓取（FinMind 三大報表；MOPS、TWSE、TPEX 備援來源待後續）
+- ✅ 完成 MVP 新聞抓取（Google News RSS 最近 30 天；其他新聞與總經來源待後續）
 Phase 3
 
 - 完成基本面分析
