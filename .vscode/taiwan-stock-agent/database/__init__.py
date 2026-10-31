@@ -28,9 +28,15 @@ def connect(database_path: str | Path | None = None) -> Iterator[sqlite3.Connect
 
 
 def initialize_database(database_path: str | Path | None = None) -> None:
-    """建立尚未存在的 Schema 資料表。"""
+    """建立 Schema，並為既有資料庫套用向後相容的欄位遷移。"""
     with connect(database_path) as connection:
         connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        metric_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(financial_metrics)")
+        }
+        if "profit_yoy" not in metric_columns:
+            connection.execute("ALTER TABLE financial_metrics ADD COLUMN profit_yoy REAL")
 
 
 def upsert_company(

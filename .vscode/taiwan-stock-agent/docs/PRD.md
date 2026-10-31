@@ -35,9 +35,9 @@ Taiwan Stock Fundamental Agent（台股基本面分析 Agent）
 ✅ 財報資料抓取
 ✅ 新聞資料抓取
 ✅ 基本面分析
-✅ 新聞摘要
+✅ 新聞摘要（Phase 4）
 ✅ 評分系統
-✅ Markdown 報告輸出
+✅ Markdown 報告輸出（Phase 4）
 暫不實作
 ❌ 即時報價
 ❌ 自動下單
@@ -79,6 +79,7 @@ Taiwan Stock Fundamental Agent（台股基本面分析 Agent）
 - 營收季增率
 - EPS 年增率
 - EPS 季增率
+- 淨利年增率
 財務體質
 
 - 負債比
@@ -282,9 +283,9 @@ Phase 2
 - ✅ 完成 MVP 新聞抓取（Google News RSS 最近 30 天；其他新聞與總經來源待後續）
 Phase 3
 
-- 完成基本面分析
-- 完成新聞分析
-- 完成評分系統
+- ✅ 完成基本面分析（季度財務指標與成長率）
+- ✅ 完成新聞分析（規則式分類、情緒與影響分數）
+- ✅ 完成評分系統（60% 基本面、20% 成長、20% 消息面）
 Phase 4
 
 - 串接 OpenAI

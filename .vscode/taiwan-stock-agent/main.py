@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import sqlite3
 
+from analyzers.fundamental import analyze_fundamentals
+from analyzers.news import analyze_news_articles
 from database import connect, initialize_database
 from fetchers.financial import FinMindFetcher, fetch_and_store_statements
 from fetchers.news import fetch_and_store_news
+from scoring import evaluate_company
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="台股基本面資料抓取工具")
+    parser = argparse.ArgumentParser(description="台股基本面分析工具")
     commands = parser.add_subparsers(dest="command", required=True)
 
     financial = commands.add_parser("fetch-financials", help="抓取 FinMind 財報")
@@ -23,7 +27,46 @@ def build_parser() -> argparse.ArgumentParser:
     news.add_argument("query", help="公司名稱、股票代號或產業關鍵字")
     news.add_argument("--stock-code", help="將新聞關聯至已存在的股票代號")
     news.add_argument("--days", type=int, default=30, help="回溯天數，預設 30")
+
+    fundamentals = commands.add_parser(
+        "analyze-fundamentals", help="計算已抓取的基本面指標"
+    )
+    fundamentals.add_argument("stock", help="已建立的股票代號或公司名稱")
+
+    news_analysis = commands.add_parser(
+        "analyze-news", help="分類新聞並計算情緒與影響分數"
+    )
+    news_analysis.add_argument(
+        "--stock-code", help="只分析指定股票；省略時分析所有未分析新聞"
+    )
+    news_analysis.add_argument(
+        "--reprocess", action="store_true", help="重新計算既有新聞分析"
+    )
+
+    scoring = commands.add_parser("score", help="計算並保存各項與綜合評分")
+    scoring.add_argument("stock", help="已建立的股票代號或公司名稱")
+    scoring.add_argument("--news-days", type=int, default=30, help="消息面回溯天數")
     return parser
+
+
+def _find_company(connection: sqlite3.Connection, stock_input: str) -> sqlite3.Row:
+    companies = connection.execute(
+        """
+        SELECT id, stock_code, name FROM companies
+        WHERE stock_code = ? OR name = ?
+        ORDER BY stock_code
+        """,
+        (stock_input, stock_input),
+    ).fetchall()
+    if not companies:
+        raise ValueError(f"資料庫中找不到公司：{stock_input}，請先抓取該公司的財報")
+    if len(companies) > 1:
+        raise ValueError(f"公司名稱對應多筆股票，請改用股票代號：{stock_input}")
+    return companies[0]
+
+
+def _format_score(score: float | None, grade: str | None) -> str:
+    return "資料不足" if score is None else f"{score:.1f}（{grade}）"
 
 
 def main() -> None:
@@ -45,7 +88,7 @@ def main() -> None:
                 fetcher=fetcher,
             )
             print(f"已更新 {company['stock_code']} {company['name']} 財報，公司 ID：{company_id}")
-        else:
+        elif args.command == "fetch-news":
             company_id = None
             if args.stock_code:
                 company = connection.execute(
@@ -61,6 +104,65 @@ def main() -> None:
                 connection, args.query, company_id=company_id, days=args.days
             )
             print(f"已取得並儲存 {len(articles)} 則新聞")
+        elif args.command == "analyze-fundamentals":
+            company = _find_company(connection, args.stock)
+            metrics = analyze_fundamentals(connection, int(company["id"]))
+            if not metrics:
+                print(f"{company['stock_code']} {company['name']} 尚無可分析的季度財報")
+                return
+            latest = metrics[-1]
+            print(
+                f"已分析 {company['stock_code']} {company['name']} "
+                f"共 {len(metrics)} 季；最新期間 {latest['period_end_date']}"
+            )
+            for label, field in (
+                ("EPS", "eps"),
+                ("ROE", "roe"),
+                ("ROA", "roa"),
+                ("毛利率", "gross_margin"),
+                ("負債比", "debt_ratio"),
+                ("營收年增率", "revenue_yoy"),
+                ("獲利年增率", "profit_yoy"),
+            ):
+                value = latest[field]
+                print(f"{label}：{'資料不足' if value is None else f'{value:.2f}'}")
+        elif args.command == "analyze-news":
+            company_id = None
+            if args.stock_code:
+                company = _find_company(connection, args.stock_code)
+                company_id = int(company["id"])
+            count = analyze_news_articles(
+                connection, company_id=company_id, reprocess=args.reprocess
+            )
+            print(f"已分析 {count} 則新聞")
+        else:
+            company = _find_company(connection, args.stock)
+            result = evaluate_company(
+                connection,
+                int(company["id"]),
+                requested_input=args.stock,
+                news_days=args.news_days,
+            )
+            print(f"股票：{company['stock_code']} {company['name']}")
+            print(
+                "基本面評分："
+                + _format_score(result.fundamental_score, result.fundamental_grade)
+            )
+            print(
+                "成長性評分："
+                + _format_score(result.growth_score, result.growth_grade)
+            )
+            print(
+                f"消息面評分：{_format_score(result.news_score, result.news_grade)}"
+                f"（{result.article_count} 則新聞）"
+            )
+            print(
+                "綜合評分："
+                + _format_score(result.overall_score, result.overall_grade)
+            )
+            if result.missing_components:
+                print("缺少資料：" + "、".join(result.missing_components))
+            print(f"分析記錄 ID：{result.analysis_report_id}")
 
 
 if __name__ == "__main__":

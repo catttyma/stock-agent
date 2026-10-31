@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS financial_metrics (
     revenue_qoq REAL,
     eps_yoy REAL,
     eps_qoq REAL,
+    profit_yoy REAL,
     debt_ratio REAL,
     current_ratio REAL,
     quick_ratio REAL,
