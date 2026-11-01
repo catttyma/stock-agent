@@ -7,9 +7,11 @@ import sqlite3
 
 from analyzers.fundamental import analyze_fundamentals
 from analyzers.news import analyze_news_articles
+from analyzers.summarization import summarize_recent_news
 from database import connect, initialize_database
 from fetchers.financial import FinMindFetcher, fetch_and_store_statements
 from fetchers.news import fetch_and_store_news
+from reports.generator import generate_company_report
 from scoring import evaluate_company
 
 
@@ -46,6 +48,27 @@ def build_parser() -> argparse.ArgumentParser:
     scoring = commands.add_parser("score", help="計算並保存各項與綜合評分")
     scoring.add_argument("stock", help="已建立的股票代號或公司名稱")
     scoring.add_argument("--news-days", type=int, default=30, help="消息面回溯天數")
+
+    summarization = commands.add_parser(
+        "summarize-news", help="使用 OpenAI 摘要指定股票的近期新聞"
+    )
+    summarization.add_argument("--stock-code", required=True, help="股票代號")
+    summarization.add_argument("--days", type=int, default=30, help="回溯天數")
+    summarization.add_argument("--model", help="OpenAI 模型，預設使用 OPENAI_MODEL")
+    summarization.add_argument(
+        "--resummarize", action="store_true", help="重新摘要已有摘要的新聞"
+    )
+
+    report = commands.add_parser(
+        "generate-report", help="執行完整分析並輸出 Markdown 報告"
+    )
+    report.add_argument("stock", help="已建立的股票代號或公司名稱")
+    report.add_argument("--news-days", type=int, default=30, help="新聞回溯天數")
+    report.add_argument("--model", help="OpenAI 模型，預設使用 OPENAI_MODEL")
+    report.add_argument("--output-dir", help="報告輸出目錄，預設為 reports/")
+    report.add_argument(
+        "--resummarize", action="store_true", help="重新摘要已有摘要的新聞"
+    )
     return parser
 
 
@@ -135,6 +158,38 @@ def main() -> None:
                 connection, company_id=company_id, reprocess=args.reprocess
             )
             print(f"已分析 {count} 則新聞")
+        elif args.command == "summarize-news":
+            company = _find_company(connection, args.stock_code)
+            count = summarize_recent_news(
+                connection,
+                int(company["id"]),
+                days=args.days,
+                model=args.model,
+                resummarize=args.resummarize,
+            )
+            print(f"已完成 {count} 則新聞摘要")
+        elif args.command == "generate-report":
+            company = _find_company(connection, args.stock)
+            report = generate_company_report(
+                connection,
+                company,
+                requested_input=args.stock,
+                news_days=args.news_days,
+                model=args.model,
+                output_dir=args.output_dir,
+                resummarize=args.resummarize,
+            )
+            print(f"股票：{company['stock_code']} {company['name']}")
+            print(
+                "綜合評分："
+                + _format_score(
+                    report.score.overall_score, report.score.overall_grade
+                )
+            )
+            if report.score.missing_components:
+                print("缺少資料：" + "、".join(report.score.missing_components))
+            print(f"新聞摘要：{report.summarized_articles} 則")
+            print(f"Markdown 報告：{report.output_path}")
         else:
             company = _find_company(connection, args.stock)
             result = evaluate_company(

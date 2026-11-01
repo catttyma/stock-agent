@@ -35,9 +35,9 @@ Taiwan Stock Fundamental Agent（台股基本面分析 Agent）
 ✅ 財報資料抓取
 ✅ 新聞資料抓取
 ✅ 基本面分析
-✅ 新聞摘要（Phase 4）
+✅ 新聞摘要（OpenAI）
 ✅ 評分系統
-✅ Markdown 報告輸出（Phase 4）
+✅ Markdown 報告輸出
 暫不實作
 ❌ 即時報價
 ❌ 自動下單
@@ -288,9 +288,9 @@ Phase 3
 - ✅ 完成評分系統（60% 基本面、20% 成長、20% 消息面）
 Phase 4
 
-- 串接 OpenAI
-- 產生 AI 摘要
-- 產出 Markdown 報告
+- ✅ 串接 OpenAI 新聞摘要
+- ✅ 產生 AI 新聞摘要並保存至 SQLite
+- ✅ 產出 Markdown 報告（保存至 SQLite 並輸出 UTF-8 檔案）
 
 
 16. 長期規劃
