@@ -155,9 +155,14 @@ def evaluate_company(
         WHERE article.company_id = ?
           AND article.published_at IS NOT NULL
           AND julianday(article.published_at) >= julianday(?)
+          AND julianday(article.published_at) < julianday(?)
         ORDER BY article.published_at DESC
         """,
-        (company_id, start_date.isoformat()),
+        (
+            company_id,
+            start_date.isoformat(),
+            (current_date + timedelta(days=1)).isoformat(),
+        ),
     ).fetchall()
     impact_scores = [float(row["impact_score"]) for row in news_rows]
     news_score = score_news(impact_scores)

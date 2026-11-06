@@ -2,8 +2,8 @@
 
 Phase 2 provides FinMind financial-statement fetching and Google News RSS
 fetching. Phase 3 calculates quarterly fundamentals, rule-based news analysis,
-and weighted scores. Results are stored in the SQLite schema in
-`database/schema.sql`.
+and weighted scores. Phase 4 adds OpenAI news summaries and Markdown reports.
+Results are stored in the SQLite schema in `database/schema.sql`.
 
 ## Setup
 
@@ -15,7 +15,10 @@ python -m pip install -r requirements.txt
 
 Set `FINMIND_TOKEN` in the environment if your FinMind plan requires an API
 token. The database defaults to `database/stock_agent.db`; set `DATABASE_PATH`
-to use a different SQLite file.
+to use a different SQLite file. Set `OPENAI_API_KEY` before using AI summaries. The application loads the
+project-root `.env` or `.venv/.env` file when initializing the OpenAI client;
+an environment variable already set in the process takes precedence. The
+default model is `gpt-4o-mini`, configurable with `OPENAI_MODEL` or `--model`.
 
 ## Fetch financial statements
 
@@ -70,7 +73,7 @@ python main.py score 2330 --news-days 30
 
 The score command uses the latest stored quarter and analyzed company news
 within the selected lookback period. It stores the fundamental, growth, news,
-and overall scores and grades; Markdown report generation remains Phase 4.
+and overall scores and grades.
 
 ### Calculation rules
 
@@ -100,3 +103,40 @@ and overall scores and grades; Markdown report generation remains Phase 4.
 
 On startup, database initialization adds the `profit_yoy` field to an existing
 `financial_metrics` table if needed.
+
+## Phase 4: AI summaries and Markdown reports
+
+You may store the key as `OPENAI_API_KEY=...` in either `.env` at the
+repository root or `.venv/.env`. Do not commit either file. Alternatively, set
+the key in the current PowerShell session:
+
+```powershell
+$env:OPENAI_API_KEY = "your OpenAI API key"
+```
+
+Summarize recent news without generating a report:
+
+```powershell
+python main.py summarize-news --stock-code 2330 --days 30
+```
+
+Generate a complete analysis and save a Markdown file under `reports/`:
+
+```powershell
+python main.py generate-report 2330 --news-days 30
+```
+
+The report command recalculates financial metrics, classifies new articles,
+summarizes recent company news that has no summary, calculates scores, stores
+the Markdown in `analysis_reports.markdown_content`, and writes a UTF-8 report
+file. Use `--resummarize` to replace summaries for articles in the selected
+period, `--model` to select an OpenAI model, or `--output-dir` to choose a
+different report directory. OpenAI requests are only made when recent company
+articles need summaries; API errors stop the command with an explicit error.
+
+Phase 4 tests use a fake OpenAI client, so the suite runs without API keys or
+network access:
+
+```powershell
+python -m unittest discover -s tests -v
+```

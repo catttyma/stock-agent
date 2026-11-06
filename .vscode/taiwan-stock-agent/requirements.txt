@@ -12,3 +12,4 @@ sqlalchemy>=2.0,<3
 # AI 摘要與 FinMind 台股資料服務
 openai>=1.0,<2
 finmind>=1.9,<2
+python-dotenv>=1.0,<2
